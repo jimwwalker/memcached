@@ -1212,3 +1212,8 @@ private:
      */
     ENGINE_HANDLE_V1* bucketEngine;
 };
+
+
+class FileConnection: public Connection {
+
+};

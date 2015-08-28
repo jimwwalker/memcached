@@ -5798,7 +5798,9 @@ bool conn_read(Connection *c) {
 
     switch (c->tryReadNetwork()) {
     case Connection::TryReadResult::NoDataReceived:
+        raise(SIGSTOP);
         c->setState(conn_waiting);
+
         break;
     case Connection::TryReadResult::DataReceived:
         c->setState(conn_parse_cmd);
@@ -6513,6 +6515,8 @@ static int server_sockets(FILE *portnumber_file) {
         stats.listening_ports[ii].maxconns = settings.interfaces[ii].maxconn;
         ret |= server_socket(settings.interfaces + ii, portnumber_file);
     }
+
+    dispatch_conn_new(STDIN_FILENO, 0, conn_new_cmd);
 
     return ret;
 }

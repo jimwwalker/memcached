@@ -622,11 +622,7 @@ int Connection::recv(char* dest, size_t nbytes) {
             res = sslRead(dest, nbytes);
         }
     } else {
-#ifdef WIN32
-        res = ::recv(socketDescriptor, dest, (int)nbytes, 0);
-#else
-        res = (int)::recv(socketDescriptor, dest, nbytes, 0);
-#endif
+        res = (int)::read(socketDescriptor, dest, nbytes);
     }
 
     return res;
@@ -652,7 +648,12 @@ int Connection::sendmsg(struct msghdr* m) {
         ssl.drainBioSendPipe(socketDescriptor);
         return res;
     } else {
-        res = ::sendmsg(socketDescriptor, m, 0);
+        if (socketDescriptor == 0) {
+            res = ::writev(2, m->msg_iov, m->msg_iovlen);
+        }
+        else {
+            res = ::writev(socketDescriptor, m->msg_iov, m->msg_iovlen);
+        }
     }
 
     return res;
@@ -785,7 +786,7 @@ Connection::TryReadResult Connection::tryReadNetwork() {
             }
         }
         if (res == 0) {
-            return TryReadResult::SocketError;
+            return socketDescriptor == 0 ? TryReadResult::NoDataReceived:TryReadResult::SocketError;
         }
         if (res == -1) {
             auto error = GetLastNetworkError();

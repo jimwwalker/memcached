@@ -206,7 +206,15 @@ static void setup_dispatcher(struct event_base *main_base,
  */
 static void setup_thread(LIBEVENT_THREAD *me) {
     me->type = ThreadType::GENERAL;
-    me->base = event_base_new();
+
+    struct event_config *cfg = event_config_new();
+
+    event_config_avoid_method(cfg, "epoll");
+
+    me->base = event_base_new_with_config(cfg);
+//ev_base = event_base_new_with_config(cfg);
+    event_config_free(cfg);
+
     if (! me->base) {
         settings.extensions.logger->log(EXTENSION_LOG_WARNING, NULL,
                                         "Can't allocate event base\n");
@@ -301,8 +309,14 @@ static void thread_libevent_process(evutil_socket_t fd, short which, void *arg) 
     }
 
     while ((item = cq_pop(me->new_conn_queue)) != NULL) {
-        Connection *c = conn_new(item->sfd, item->parent_port, item->init_state,
+        Connection *c;
+        if(item->sfd == STDIN_FILENO) {
+            c = conn_file_new(item->sfd, item->init_state,
                                  me->base);
+        } else {
+            c = conn_new(item->sfd, item->parent_port, item->init_state,
+                                 me->base);
+        }
         if (c == NULL) {
             settings.extensions.logger->log(EXTENSION_LOG_WARNING, NULL,
                                             "Can't listen for events on fd %d",
