@@ -46,6 +46,11 @@ Connection* conn_new(const SOCKET sfd, in_port_t parent_port,
                      STATE_FUNC init_state, struct event_base* base,
                      LIBEVENT_THREAD* thread = nullptr);
 
+Connection *conn_file_new(const int fd,
+                          STATE_FUNC init_state,
+                          struct event_base *base,
+                          LIBEVENT_THREAD* thread = nullptr);
+
 /*
  * Closes a connection. Afterwards the connection is invalid (can no longer
  * be used), but it's memory is still allocated. See conn_destructor() to

@@ -53,6 +53,8 @@ static void conn_return_single_buffer(Connection *c, struct net_buf *thread_buf,
                                       struct net_buf *conn_buf);
 static void conn_destructor(Connection *c);
 static Connection *allocate_connection(SOCKET sfd);
+static Connection *allocate_file_connection(SOCKET sfd);
+
 static void release_connection(Connection *c);
 
 /** External functions *******************************************************/
@@ -259,6 +261,40 @@ Connection* conn_new(const SOCKET sfd, in_port_t parent_port,
     return c;
 }
 
+/*
+    Non-socket input
+*/
+Connection* conn_file_new(const int fd,
+                     STATE_FUNC init_state,
+                     struct event_base *base,
+                     LIBEVENT_THREAD* thread) {
+    Connection *c = allocate_file_connection(fd);
+
+    c->setAuthContext(auth_create(NULL, "stdin", "stdin"));
+
+    if (!c->initializeEvent(base)) {
+        cb_assert(c->getThread() == nullptr);
+        release_connection(c);
+        return NULL;
+    }
+
+    stats.total_conns++;
+    c->setState(init_state);
+    c->incrementRefcount();
+
+    if (init_state == conn_listening) {
+        c->setBucketEngine(nullptr);
+        c->setBucketIndex(-1);
+    } else {
+        associate_initial_bucket(c);
+    }
+    c->setThread(thread);
+    MEMCACHED_CONN_ALLOCATE(c->getId());
+
+    return c;
+
+}
+
 void conn_cleanup_engine_allocations(Connection * c) {
     ENGINE_HANDLE* handle = reinterpret_cast<ENGINE_HANDLE*>(c->getBucketEngine());
     if (c->getItem() != nullptr) {
@@ -329,6 +365,10 @@ void conn_close(Connection *c) {
         std::logic_error("conn_close: failed to disassociate connection from thread");
     }
     c->setState(conn_destroyed);
+
+    if (settings.afl_fuzz) {
+       exit(0);
+    }
 }
 
 struct listening_port *get_listening_port_instance(const in_port_t port) {
@@ -477,6 +517,31 @@ static Connection *allocate_connection(SOCKET sfd) {
         delete ret;
         return NULL;
     }
+}
+
+/** Allocate a FileConnection, creating memory and adding it to the conections
+ *  list. Returns a pointer to the newly-allocated connection if successful,
+ *  else NULL.
+ */
+static Connection *allocate_file_connection(int fd) {
+    Connection *ret;
+
+    try {
+        ret = new StdStreamConnection;
+    } catch (std::bad_alloc) {
+        settings.extensions.logger->log(EXTENSION_LOG_WARNING, NULL,
+                                        "Failed to allocate memory for connection");
+        return NULL;
+    }
+    ret->setSocketDescriptor(fd);
+    stats.conn_structs++;
+
+    {
+        std::lock_guard<std::mutex> lock(connections.mutex);
+        connections.conns.push_back(ret);
+    }
+
+    return ret;
 }
 
 /** Release a connection; removing it from the connection list management

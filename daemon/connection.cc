@@ -60,11 +60,11 @@ Connection::Connection()
       tap_iterator(nullptr),
       dcp(false),
       commandContext(nullptr),
-      peername("unknown"),
-      sockname("unknown"),
       auth_context(nullptr),
       bucketIndex(0),
-      bucketEngine(nullptr) {
+      bucketEngine(nullptr),
+      peername("unknown"),
+      sockname("unknown") {
     MEMCACHED_CONN_CREATE(this);
 
     memset(&event, 0, sizeof(event));
@@ -674,11 +674,7 @@ int Connection::recv(char* dest, size_t nbytes) {
             res = sslRead(dest, nbytes);
         }
     } else {
-#ifdef WIN32
-        res = ::recv(socketDescriptor, dest, (int)nbytes, 0);
-#else
-        res = (int)::recv(socketDescriptor, dest, nbytes, 0);
-#endif
+        res = (int)::read(socketDescriptor, dest, nbytes);
     }
 
     return res;
@@ -704,7 +700,12 @@ int Connection::sendmsg(struct msghdr* m) {
         ssl.drainBioSendPipe(socketDescriptor);
         return res;
     } else {
-        res = ::sendmsg(socketDescriptor, m, 0);
+        if (isStdStreamConnection()) {
+            res = ::writev(STDOUT_FILENO, m->msg_iov, m->msg_iovlen);
+        }
+        else {
+            res = ::sendmsg(socketDescriptor, m, 0);
+        }
     }
 
     return res;
@@ -837,7 +838,7 @@ Connection::TryReadResult Connection::tryReadNetwork() {
             }
         }
         if (res == 0) {
-            return TryReadResult::SocketError;
+            return socketDescriptor == 0 ? TryReadResult::NoDataReceived:TryReadResult::SocketError;
         }
         if (res == -1) {
             auto error = GetLastNetworkError();
@@ -1252,4 +1253,9 @@ bool Connection::ensureIovSpace() {
     }
 
     return true;
+}
+
+StdStreamConnection::StdStreamConnection() {
+    peername = "stdin";
+    sockname = "stdstream";
 }

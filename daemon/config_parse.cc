@@ -753,6 +753,36 @@ static bool get_datatype(cJSON *o, struct settings *settings,
     }
 }
 
+static bool get_stdstream_listen(cJSON *o, struct settings *settings,
+                                 char **error_msg) {
+    if (get_bool_value(o, o->string, &settings->stdstream_listen, error_msg)) {
+        settings->has.stdstream_listen = true;
+        return true;
+    } else {
+        return false;
+    }
+}
+
+static bool dyna_reconfig_stdstream_listen(const struct settings *new_settings,
+                                           cJSON* errors) {
+    return true;
+}
+
+static bool get_afl_fuzz(cJSON *o, struct settings *settings,
+                         char **error_msg) {
+    if (get_bool_value(o, o->string, &settings->afl_fuzz, error_msg)) {
+        settings->has.afl_fuzz = true;
+        return true;
+    } else {
+        return false;
+    }
+}
+
+static bool dyna_reconfig_afl_fuzz(const struct settings *new_settings,
+                                   cJSON* errors) {
+    return true;
+}
+
 static bool parse_breakpad(cJSON *o, struct settings *settings,
                            char** error_msg) {
     if (o->type != cJSON_Object) {
@@ -1441,6 +1471,8 @@ struct {
       dyna_reconfig_ssl_cipher_list },
     { "breakpad", parse_breakpad, dyna_validate_breakpad, dyna_reconfig_breakpad },
     { "max_packet_size", get_max_packet_size, dyna_validate_max_packet_size, NULL},
+    { "stdstream_listen", get_stdstream_listen, dyna_reconfig_stdstream_listen, NULL},
+    { "afl_fuzz", get_afl_fuzz, dyna_reconfig_afl_fuzz, NULL},
     { NULL, NULL, NULL, NULL }
 };
 

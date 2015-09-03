@@ -124,6 +124,17 @@ struct settings {
      */
     int topkeys_size;
 
+
+    /**
+     * Listen on stdin (reply to stdout)
+     */
+    bool stdstream_listen;
+
+    /**
+     * Run for afl-fuzz, exit when no more data to be read on stdin.
+     */
+    bool afl_fuzz;
+
     /* flags for each of the above config options, indicating if they were
      * specified in a parsed config file.
      */
@@ -150,6 +161,8 @@ struct settings {
         bool require_init;
         bool ssl_cipher_list;
         bool topkeys_size;
+        bool stdstream_listen;
+        bool afl_fuzz;
     } has;
     /*************************************************************************
      * These settings are not exposed to the user, and are either derived from
