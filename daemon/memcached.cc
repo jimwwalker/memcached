@@ -893,7 +893,14 @@ bool conn_read(Connection *c) {
 
     switch (c->tryReadNetwork()) {
     case Connection::TryReadResult::NoDataReceived:
-        c->setState(conn_waiting);
+        if (settings.afl_fuzz) {
+            // When running with afl-fuzz, it expects memcached to exit
+            // when the test is finished. Once we proceed to read EOF close
+            // the connection which will finally exit the process
+            c->setState(conn_closing);
+        } else {
+            c->setState(conn_waiting);
+        }
         break;
     case Connection::TryReadResult::DataReceived:
         c->setState(conn_parse_cmd);
@@ -948,7 +955,11 @@ bool conn_new_cmd(Connection *c) {
          * the other end so that they'll _have_ to wait for a write event.
          */
         if (c->havePendingInputData() || c->isDCP() || c->isTAP()) {
-            if (!c->updateEvent(EV_WRITE | EV_PERSIST)) {
+            short flags = EV_WRITE | EV_PERSIST;
+            if (c->isStdStreamConnection()) {
+                flags |= EV_READ;
+            }
+            if (!c->updateEvent(flags)) {
                 c->setState(conn_closing);
                 return true;
             }
@@ -1105,8 +1116,12 @@ bool conn_immediate_close(Connection *c) {
     {
         std::lock_guard<std::mutex> guard(stats_mutex);
         port_instance = get_listening_port_instance(c->getParentPort());
-        cb_assert(port_instance);
+        if (port_instance) {
         --port_instance->curr_conns;
+        } else if(!c->isStdStreamConnection()) {
+            throw std::logic_error("null port_instance and connection "
+                                   "is not a std stream");
+        }
     }
 
     perform_callbacks(ON_DISCONNECT, NULL, c);
@@ -1746,6 +1761,10 @@ static int server_sockets(FILE *portnumber_file) {
         fprintf(portnumber_file, "%s\n", ptr);
         cJSON_Free(ptr);
         cJSON_Delete(root);
+    }
+
+    if (settings.stdstream_listen) {
+        dispatch_conn_new(STDIN_FILENO, 0, conn_new_cmd);
     }
 
     return ret;
@@ -2902,6 +2921,14 @@ int main (int argc, char **argv) {
 
     /* Initialize breakpad crash catcher with our just-parsed settings. */
     initialize_breakpad(&settings.breakpad);
+
+    /* check that if fuzzing is enabled stdstream listen is also enabled */
+    if (settings.afl_fuzz && !settings.stdstream_listen) {
+        settings.extensions.logger->log(EXTENSION_LOG_DEBUG, NULL,
+                                        "Config error: afl_fuzz requires "
+                                        "stdstream_listen to be enabled");
+        abort();
+    }
 
     /* load extensions specified in the settings */
     load_extensions();

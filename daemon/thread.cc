@@ -172,7 +172,17 @@ static void setup_dispatcher(struct event_base *main_base,
  */
 static void setup_thread(LIBEVENT_THREAD *me) {
     me->type = ThreadType::GENERAL;
-    me->base = event_base_new();
+
+    if (settings.stdstream_listen) {
+        // can't use epoll for stdstream listening
+        struct event_config *cfg = event_config_new();
+        event_config_avoid_method(cfg, "epoll");
+        me->base = event_base_new_with_config(cfg);
+        event_config_free(cfg);
+    } else {
+        me->base = event_base_new();
+    }
+
     if (! me->base) {
         settings.extensions.logger->log(EXTENSION_LOG_WARNING, NULL,
                                         "Can't allocate event base\n");
@@ -262,8 +272,15 @@ static void drain_notification_channel(evutil_socket_t fd)
 void dispatch_new_connections(LIBEVENT_THREAD* me) {
     std::unique_ptr<ConnectionQueueItem> item;
     while ((item = me->new_conn_queue->pop()) != nullptr) {
-        Connection* c = conn_new(item->sfd, item->parent_port, item->init_state,
+        Connection* c = nullptr;
+        if(item->sfd == STDIN_FILENO) {
+            c = conn_file_new(item->sfd, item->init_state,
                                  me->base, me);
+        } else {
+            c = conn_new(item->sfd, item->parent_port, item->init_state,
+                                 me->base, me);
+        }
+
         if (c == nullptr) {
             settings.extensions.logger->log(EXTENSION_LOG_WARNING, nullptr,
                                             "Failed to dispatch event for "

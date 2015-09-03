@@ -191,7 +191,7 @@ class Connection {
 public:
     Connection();
 
-    ~Connection();
+    virtual ~Connection();
 
     Connection(const Connection&) = delete;
 
@@ -905,37 +905,19 @@ public:
     // header) for the current command.
     bool includeErrorStringInResponseBody(protocol_binary_response_status err) const;
 
-protected:
+    virtual bool isStdStreamConnection() {
+        return false;
+    }
 
-    /**
-     * Ensures that there is room for another struct iovec in a connection's
-     * iov list.
-     */
-    bool ensureIovSpace();
+    /** Read buffer */
+    struct net_buf read;
 
-    /**
-     * Read data over the SSL connection
-     *
-     * @param dest where to store the data
-     * @param nbytes the size of the destination buffer
-     * @return the number of bytes read
-     */
-    int sslRead(char* dest, size_t nbytes);
+    /** Write buffer */
+    struct net_buf write;
 
-    /**
-     * Write data over the SSL stream
-     *
-     * @param src the source of the data
-     * @param nbytes the number of bytes to send
-     * @return the number of bytes written
-     */
-    int sslWrite(const char* src, size_t nbytes);
-
-    /**
-     * Handle the state for the ssl connection before the ssl connection
-     * is fully established
-     */
-    int sslPreConnection();
+    /* Binary protocol stuff */
+    /* This is where the binary header goes */
+    protocol_binary_request_header binary_header;
 
 private:
     /**
@@ -984,13 +966,6 @@ private:
     /** which events were just triggered */
     short currentEvent;
 
-public:
-    /** Read buffer */
-    struct net_buf read;
-    /** Write buffer */
-    struct net_buf write;
-
-private:
     /** which state to go into after finishing current write */
     TaskFunction write_and_go;
 
@@ -1074,12 +1049,6 @@ private:
      */
     hrtime_t start;
 
-public:
-    /* Binary protocol stuff */
-    /* This is where the binary header goes */
-    protocol_binary_request_header binary_header;
-
-private:
     /** the cas to return */
     uint64_t cas;
 
@@ -1125,12 +1094,6 @@ private:
      */
     SslContext ssl;
 
-    /** Name of the peer if known */
-    std::string peername;
-
-    /** Name of the local socket if known */
-    std::string sockname;
-
     /**
      * The authentication context in use by this connection
      */
@@ -1145,4 +1108,63 @@ private:
      * The engine interface for the connected bucket
      */
     ENGINE_HANDLE_V1* bucketEngine;
+
+protected:
+
+    /**
+     * Ensures that there is room for another struct iovec in a connection's
+     * iov list.
+     */
+    bool ensureIovSpace();
+
+    /**
+     * Read data over the SSL connection
+     *
+     * @param dest where to store the data
+     * @param nbytes the size of the destination buffer
+     * @return the number of bytes read
+     */
+    int sslRead(char* dest, size_t nbytes);
+
+    /**
+     * Write data over the SSL stream
+     *
+     * @param src the source of the data
+     * @param nbytes the number of bytes to send
+     * @return the number of bytes written
+     */
+    int sslWrite(const char* src, size_t nbytes);
+
+    /**
+     * Handle the state for the ssl connection before the ssl connection
+     * is fully established
+     */
+    int sslPreConnection();
+
+    /** Name of the peer if known */
+    std::string peername;
+
+    /** Name of the local socket if known */
+    std::string sockname;
+};
+
+/*
+    A connection on a stdstream (which is a pipe, not a socket)
+
+    This subclass doesn't do much, but should be expanded where exising
+    logic in Connection breaks for a stdstream/pipe.
+*/
+class StdStreamConnection : public Connection {
+public:
+    /*
+     * Construct connection and set peername to be "stdin" and sockname to be
+     * "stdstream".
+     */
+    StdStreamConnection();
+
+    ~StdStreamConnection();
+
+    virtual bool isStdStreamConnection() {
+        return true;
+    }
 };
