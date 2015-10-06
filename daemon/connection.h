@@ -1149,6 +1149,8 @@ protected:
 
     /** Name of the local socket if known */
     std::string sockname;
+
+    FILE* recording;
 };
 
 /*

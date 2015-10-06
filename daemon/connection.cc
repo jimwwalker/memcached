@@ -64,7 +64,8 @@ Connection::Connection()
       bucketIndex(0),
       bucketEngine(nullptr),
       peername("unknown"),
-      sockname("unknown") {
+      sockname("unknown"),
+      recording(nullptr) {
     MEMCACHED_CONN_CREATE(this);
 
     memset(&event, 0, sizeof(event));
@@ -676,7 +677,15 @@ int Connection::recv(char* dest, size_t nbytes) {
     } else {
         res = (int)::read(socketDescriptor, dest, nbytes);
     }
-
+    // hacked in for now
+    if (res > 0) {
+        if(recording == nullptr) {
+            std::string filename = "memcached.input." + std::to_string(socketDescriptor) + "." + std::to_string(time(NULL));
+            recording = fopen(filename.c_str(), "w");
+        }
+    	fwrite(dest, res, 1, recording);
+        fflush(recording);
+    }
     return res;
 }
 
