@@ -106,7 +106,7 @@ void TestappTest::CreateTestBucket()
 
     char cfg[80];
     memset(cfg, 0, sizeof(cfg));
-    snprintf(cfg, sizeof(cfg), "ewouldblock_engine.so%cdefault_engine.so", 0);
+    snprintf(cfg, sizeof(cfg), "default_engine.so%c", 0);
 
     Frame request;
     mcbp_raw_command(request, PROTOCOL_BINARY_CMD_CREATE_BUCKET,
@@ -287,8 +287,7 @@ cJSON* TestappTest::generate_config(uint16_t ssl_port)
     strncat(pem_path, CERTIFICATE_PATH(testapp.pem), 256);
     strncat(cert_path, CERTIFICATE_PATH(testapp.cert), 256);
 
-    cJSON_AddStringToObject(obj, "module", "ewouldblock_engine.so");
-    cJSON_AddStringToObject(obj, "config", "default_engine.so");
+    cJSON_AddStringToObject(obj, "module", "default_engine.so");
     cJSON_AddItemToObject(root, "engine", obj);
 
     if (memcached_verbose) {
@@ -904,6 +903,7 @@ bool safe_recv_packet(void *buf, size_t size) {
 void TestappTest::ewouldblock_engine_configure(ENGINE_ERROR_CODE err_code,
                                                   EWBEngine_Mode mode,
                                                   uint32_t value) {
+    return;
     union {
         request_ewouldblock_ctl request;
         protocol_binary_response_no_extras response;
