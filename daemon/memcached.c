@@ -2995,6 +2995,7 @@ static ENGINE_ERROR_CODE dcp_message_add_stream_response(const void *cookie,
 {
     protocol_binary_response_dcp_add_stream packet;
     conn *c = (void*)cookie;
+    c->cmd = PROTOCOL_BINARY_CMD_DCP_ADD_STREAM;
 
     if (c->wbytes + sizeof(packet.bytes) >= c->wsize) {
         /* We don't have room in the buffer */
@@ -3024,6 +3025,7 @@ static ENGINE_ERROR_CODE dcp_message_marker_response(const void *cookie,
 {
     protocol_binary_response_dcp_snapshot_marker packet;
     conn *c = (void*)cookie;
+    c->cmd = PROTOCOL_BINARY_CMD_DCP_SNAPSHOT_MARKER;
 
     if (c->wbytes + sizeof(packet.bytes) >= c->wsize) {
         /* We don't have room in the buffer */
@@ -3052,6 +3054,7 @@ static ENGINE_ERROR_CODE dcp_message_set_vbucket_state_response(const void *cook
 {
     protocol_binary_response_dcp_set_vbucket_state packet;
     conn *c = (void*)cookie;
+    c->cmd = PROTOCOL_BINARY_CMD_DCP_SET_VBUCKET_STATE;
 
     if (c->wbytes + sizeof(packet.bytes) >= c->wsize) {
         /* We don't have room in the buffer */
@@ -3081,6 +3084,7 @@ static ENGINE_ERROR_CODE dcp_message_stream_end(const void *cookie,
 {
     protocol_binary_request_dcp_stream_end packet;
     conn *c = (void*)cookie;
+    c->cmd = PROTOCOL_BINARY_CMD_DCP_STREAM_END;
 
     if (c->wbytes + sizeof(packet.bytes) >= c->wsize) {
         /* We don't have room in the buffer */
@@ -3113,7 +3117,7 @@ static ENGINE_ERROR_CODE dcp_message_marker(const void *cookie,
 {
     protocol_binary_request_dcp_snapshot_marker packet;
     conn *c = (void*)cookie;
-
+    c->cmd = PROTOCOL_BINARY_CMD_DCP_SNAPSHOT_MARKER;
     if (c->wbytes + sizeof(packet.bytes) >= c->wsize) {
         /* We don't have room in the buffer */
         return ENGINE_E2BIG;
@@ -3150,6 +3154,7 @@ static ENGINE_ERROR_CODE dcp_message_mutation(const void* cookie,
                                               uint8_t nru)
 {
     conn *c = (void*)cookie;
+    c->cmd = PROTOCOL_BINARY_CMD_DCP_MUTATION;
     item_info_holder info;
     protocol_binary_request_dcp_mutation packet;
     int xx;
@@ -3219,6 +3224,7 @@ static ENGINE_ERROR_CODE dcp_message_deletion(const void* cookie,
                                               uint16_t nmeta)
 {
     conn *c = (void*)cookie;
+    c->cmd = PROTOCOL_BINARY_CMD_DCP_DELETION;
     protocol_binary_request_dcp_deletion packet;
     if (c->wbytes + sizeof(packet.bytes) + nkey + nmeta >= c->wsize) {
         return ENGINE_E2BIG;
@@ -3263,6 +3269,7 @@ static ENGINE_ERROR_CODE dcp_message_expiration(const void* cookie,
                                                 uint16_t nmeta)
 {
     conn *c = (void*)cookie;
+    c->cmd = PROTOCOL_BINARY_CMD_DCP_EXPIRATION;
     protocol_binary_request_dcp_deletion packet;
 
     if (c->wbytes + sizeof(packet.bytes) + nkey + nmeta >= c->wsize) {
@@ -3302,6 +3309,7 @@ static ENGINE_ERROR_CODE dcp_message_flush(const void* cookie,
 {
     protocol_binary_request_dcp_flush packet;
     conn *c = (void*)cookie;
+    c->cmd = PROTOCOL_BINARY_CMD_DCP_FLUSH;
 
     if (c->wbytes + sizeof(packet.bytes) >= c->wsize) {
         /* We don't have room in the buffer */
@@ -3329,6 +3337,7 @@ static ENGINE_ERROR_CODE dcp_message_set_vbucket_state(const void* cookie,
 {
     protocol_binary_request_dcp_set_vbucket_state packet;
     conn *c = (void*)cookie;
+    c->cmd = PROTOCOL_BINARY_CMD_DCP_SET_VBUCKET_STATE;
 
     if (c->wbytes + sizeof(packet.bytes) >= c->wsize) {
         /* We don't have room in the buffer */
@@ -3373,6 +3382,7 @@ static ENGINE_ERROR_CODE dcp_message_noop(const void* cookie,
 {
     protocol_binary_request_dcp_noop packet;
     conn *c = (void*)cookie;
+    c->cmd = PROTOCOL_BINARY_CMD_DCP_NOOP;
 
     if (c->wbytes + sizeof(packet.bytes) >= c->wsize) {
         /* We don't have room in the buffer */
@@ -3399,6 +3409,7 @@ static ENGINE_ERROR_CODE dcp_message_buffer_acknowledgement(const void* cookie,
 {
     protocol_binary_request_dcp_buffer_acknowledgement packet;
     conn *c = (void*)cookie;
+    c->cmd = PROTOCOL_BINARY_CMD_DCP_BUFFER_ACKNOWLEDGEMENT;
 
     if (c->wbytes + sizeof(packet.bytes) >= c->wsize) {
         /* We don't have room in the buffer */
@@ -3431,6 +3442,7 @@ static ENGINE_ERROR_CODE dcp_message_control(const void* cookie,
 {
     protocol_binary_request_dcp_control packet;
     conn *c = (void*)cookie;
+    c->cmd = PROTOCOL_BINARY_CMD_DCP_CONTROL;
 
     if (c->wbytes + sizeof(packet.bytes) + nkey + nvalue >= c->wsize) {
         /* We don't have room in the buffer */
@@ -3479,6 +3491,9 @@ static void ship_dcp_log(conn *c) {
         dcp_message_control
     };
     ENGINE_ERROR_CODE ret;
+
+    // Begin timing DCP, each dcp callback needs to set the c->cmd
+    c->start = gethrtime();
 
     c->msgcurr = 0;
     c->msgused = 0;
@@ -4212,7 +4227,7 @@ static ENGINE_ERROR_CODE add_failover_log(vbucket_failover_t*entries,
 
 static void dcp_get_failover_log_executor(conn *c, void *packet) {
     protocol_binary_request_dcp_get_failover_log *req = (void*)packet;
-
+    c->cmd = PROTOCOL_BINARY_CMD_DCP_GET_FAILOVER_LOG;
     if (settings.engine.v1->dcp.get_failover_log == NULL) {
         write_bin_packet(c, PROTOCOL_BINARY_RESPONSE_NOT_SUPPORTED, 0);
     } else {
@@ -4255,6 +4270,7 @@ static void dcp_get_failover_log_executor(conn *c, void *packet) {
 static void dcp_stream_req_executor(conn *c, void *packet)
 {
     protocol_binary_request_dcp_stream_req *req = (void*)packet;
+    c->cmd = PROTOCOL_BINARY_CMD_DCP_STREAM_REQ;
 
     if (settings.engine.v1->dcp.stream_req == NULL) {
         write_bin_packet(c, PROTOCOL_BINARY_RESPONSE_NOT_SUPPORTED, 0);
