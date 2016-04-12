@@ -836,15 +836,6 @@ static protocol_binary_response_status tap_validator(const Cookie& cookie) {
     return PROTOCOL_BINARY_RESPONSE_SUCCESS;
 }
 
-static protocol_binary_response_status get_collections_validator(const Cookie& cookie) {
-    /*
-       This function will check key for collection
-       cookie->getBucket().isKeyValidCollection() ...
-    */
-
-    return PROTOCOL_BINARY_RESPONSE_SUCCESS;
-}
-
 void McbpValidatorChains::initializeMcbpValidatorChains(McbpValidatorChains& chains) {
     chains.push_unique(PROTOCOL_BINARY_CMD_DCP_OPEN, dcp_open_validator);
     chains.push_unique(PROTOCOL_BINARY_CMD_DCP_ADD_STREAM, dcp_add_stream_validator);
@@ -940,11 +931,58 @@ void McbpValidatorChains::initializeMcbpValidatorChains(McbpValidatorChains& cha
 /**
  * Add relevant collections validators to KV opcodes.
  */
-void McbpValidatorChains::enableCollections(McbpValidatorChains& chains) {
-    // example of how this will work
-    chains.push_unique(PROTOCOL_BINARY_CMD_GET, get_collections_validator);
-    chains.push_unique(PROTOCOL_BINARY_CMD_GETQ, get_collections_validator);
-    chains.push_unique(PROTOCOL_BINARY_CMD_GETK, get_collections_validator);
-    chains.push_unique(PROTOCOL_BINARY_CMD_GETKQ, get_collections_validator);
-    // TODO: set/delete etc...
+void McbpValidatorChains::enableColections(McbpValidatorChains& chains) {
+
+    const protocol_binary_command commands[] = {
+        PROTOCOL_BINARY_CMD_GET,
+        PROTOCOL_BINARY_CMD_GETQ,
+        PROTOCOL_BINARY_CMD_GETK,
+        PROTOCOL_BINARY_CMD_GETKQ,
+        PROTOCOL_BINARY_CMD_SET,
+        PROTOCOL_BINARY_CMD_SETQ,
+        PROTOCOL_BINARY_CMD_ADD,
+        PROTOCOL_BINARY_CMD_ADDQ,
+        PROTOCOL_BINARY_CMD_REPLACE,
+        PROTOCOL_BINARY_CMD_REPLACEQ,
+        PROTOCOL_BINARY_CMD_APPEND,
+        PROTOCOL_BINARY_CMD_APPENDQ,
+        PROTOCOL_BINARY_CMD_PREPEND,
+        PROTOCOL_BINARY_CMD_PREPENDQ,
+        PROTOCOL_BINARY_CMD_GET_META,
+        PROTOCOL_BINARY_CMD_GETQ_META,
+        PROTOCOL_BINARY_CMD_SET_WITH_META,
+        PROTOCOL_BINARY_CMD_SETQ_WITH_META,
+        PROTOCOL_BINARY_CMD_ADD_WITH_META,
+        PROTOCOL_BINARY_CMD_ADDQ_WITH_META,
+        PROTOCOL_BINARY_CMD_DEL_WITH_META,
+        PROTOCOL_BINARY_CMD_DELQ_WITH_META,
+        PROTOCOL_BINARY_CMD_EVICT_KEY,
+        PROTOCOL_BINARY_CMD_GET_LOCKED,
+        PROTOCOL_BINARY_CMD_TOUCH,
+        PROTOCOL_BINARY_CMD_GAT,
+        PROTOCOL_BINARY_CMD_UNLOCK_KEY,
+        PROTOCOL_BINARY_CMD_INCREMENT,
+        PROTOCOL_BINARY_CMD_DECREMENT,
+        PROTOCOL_BINARY_CMD_DELETE,
+        PROTOCOL_BINARY_CMD_DELETEQ,
+        PROTOCOL_BINARY_CMD_INCREMENTQ,
+        PROTOCOL_BINARY_CMD_DECREMENTQ,
+        PROTOCOL_BINARY_CMD_SUBDOC_GET,
+        PROTOCOL_BINARY_CMD_SUBDOC_EXISTS,
+        PROTOCOL_BINARY_CMD_SUBDOC_DICT_ADD,
+        PROTOCOL_BINARY_CMD_SUBDOC_DICT_UPSERT,
+        PROTOCOL_BINARY_CMD_SUBDOC_DELETE,
+        PROTOCOL_BINARY_CMD_SUBDOC_REPLACE,
+        PROTOCOL_BINARY_CMD_SUBDOC_ARRAY_PUSH_LAST,
+        PROTOCOL_BINARY_CMD_SUBDOC_ARRAY_PUSH_FIRST,
+        PROTOCOL_BINARY_CMD_SUBDOC_ARRAY_INSERT,
+        PROTOCOL_BINARY_CMD_SUBDOC_ARRAY_ADD_UNIQUE,
+        PROTOCOL_BINARY_CMD_SUBDOC_COUNTER,
+        PROTOCOL_BINARY_CMD_SUBDOC_MULTI_LOOKUP,
+        PROTOCOL_BINARY_CMD_SUBDOC_MULTI_MUTATION,
+        PROTOCOL_BINARY_CMD_INVALID
+    };
+    for (int ii = 0; commands[ii] != PROTOCOL_BINARY_CMD_INVALID; ii++) {
+        chains.push_unique(commands[ii], collections_in_key_validator);
+    }
 }

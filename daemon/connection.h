@@ -360,6 +360,13 @@ public:
      */
     void restartAuthentication();
 
+    /**
+     *  Returns true if the given key contains a valid collection name.
+     *  This will compare the key against the bucket associated with this
+     *  connection.
+     */
+    bool doesKeyContainValidCollection(const std::string& key);
+
 protected:
     Connection(SOCKET sfd, event_base* b);
 

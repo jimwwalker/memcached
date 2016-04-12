@@ -711,6 +711,11 @@ public:
                (c->binary_header.request.bodylen + sizeof(c->binary_header)));
     }
 
+    static char* getKey(const Cookie& cookie) {
+        auto c = static_cast<McbpConnection*>(cookie.connection);
+        return c->read.curr - (c->binary_header.request.keylen);
+    }
+
     /**
      *  Invoke the validator function(s) for the command
      */

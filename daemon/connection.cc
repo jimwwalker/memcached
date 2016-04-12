@@ -301,3 +301,7 @@ void Connection::restartAuthentication() {
                                getPeername().c_str(),
                                getSockname().c_str()));
 }
+
+bool Connection::doesKeyContainValidCollection(const std::string& key) {
+    return Bucket::doesKeyContainValidCollection(this, key);
+}

@@ -22,6 +22,7 @@
 #include <vector>
 #include <platform/thread.h>
 
+#include "collections.h"
 #include "connection.h"
 #include "cookie.h"
 #include "function_chain.h"
@@ -117,6 +118,13 @@ public:
                                                 Cookie& cookie);
 
     /**
+     * Lookup on c's bucket collection config to see if key contains
+     * a valid collection name.
+     */
+    static bool doesKeyContainValidCollection(const Connection* c,
+                                              const std::string& key);
+
+    /**
      * Mutex protecting the state and refcount. (@todo move to std::mutex)
      */
     cb_mutex_t mutex;
@@ -181,6 +189,11 @@ public:
      * The validator chains to use for this bucket when receiving MCBP commands.
      */
     McbpValidatorChains validatorChains;
+
+    /**
+     * Collections data for this bucket.
+     */
+    Collections collections;
 };
 
 class Connection;
