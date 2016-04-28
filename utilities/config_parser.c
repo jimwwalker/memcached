@@ -201,9 +201,9 @@ int parse_config(const char *str, struct config_item *items, FILE *error) {
 
       if (items[ii].key == NULL) {
          if (error != NULL) {
-            fprintf(error, "Unsupported key: <%s>\n", key);
+            fprintf(error, "Cannot match key: <%s>\n", key);
          }
-         ret = 1;
+         //ret = 1;
       }
    }
    return ret;

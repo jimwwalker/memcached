@@ -97,7 +97,7 @@ public:
      */
     void push_unique(Function<ReturnType, Success, arguments...> f) {
         if (chain.end() == std::find(chain.begin(), chain.end(), f)) {
-           chain.push_back(f);
+            chain.push_back(f);
         }
     }
 

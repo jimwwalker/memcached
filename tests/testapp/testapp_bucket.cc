@@ -118,7 +118,7 @@ TEST_P(BucketTest, TestMultipleBuckets) {
     try {
         for (ii = 1; ii < COUCHBASE_MAX_NUM_BUCKETS; ++ii) {
             std::string name = "bucket-" + std::to_string(ii);
-            connection.createBucket(name, "", Greenstack::BucketType::Memcached);
+            connection.createBucket(name, "collection_mode=strict;collection_set=", Greenstack::BucketType::Memcached);
         }
     } catch (ConnectionError& ex) {
         FAIL() << "Failed to create more than " << ii << " buckets";

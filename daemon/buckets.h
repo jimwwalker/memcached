@@ -106,7 +106,7 @@ public:
     }
 
     void enableCollections() {
-        McbpValidatorChains::enableCollections(validatorChains);
+        Collections::enableCollectionValidators(validatorChains);
     }
 
     /**

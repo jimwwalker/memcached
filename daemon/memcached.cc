@@ -104,7 +104,7 @@ protocol_binary_response_status Bucket::validateMcbpCommand(
 
 bool Bucket::doesKeyContainValidCollection(const Connection* c,
                                            const std::string& key) {
-    return all_buckets[c->getBucketIndex()].collections.doesKeyContainValidCollection(key);
+    return all_buckets[c->getBucketIndex()].collections.isKeyPrefixedWithACollection(key);
 }
 
 std::atomic<bool> memcached_shutdown;
@@ -1921,7 +1921,26 @@ void CreateBucketThread::create() {
             result = ENGINE_ENOMEM;
         }
 
+        // Do we need collections?
         if (result == ENGINE_SUCCESS) {
+            try {
+                bucket.collections.initFromBucketConfig(config);}
+            catch (std::exception& e) {
+                LOG_WARNING(&connection, "%u - Collections: failed to parse "
+                                         "config string for bucket [%s] %s",
+                            connection.getId(), name.c_str(), e.what());
+                result = ENGINE_FAILED;
+            }
+
+            // Did collections become enabled?
+            if (bucket.collections.isEnabled()) {
+                // Now drive the enablement through the bucket
+                bucket.enableCollections();
+            }
+        }
+
+        if (result == ENGINE_SUCCESS) {
+
             cb_mutex_enter(&bucket.mutex);
             bucket.state = BucketState::Ready;
             cb_mutex_exit(&bucket.mutex);

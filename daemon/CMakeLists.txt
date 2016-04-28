@@ -56,6 +56,7 @@ ADD_LIBRARY(memcached_daemon STATIC
                cmdline.cc
                cmdline.h
                collections.cc
+               collections_validators.cc
                config_parse.cc
                config_parse.h
                config_util.cc
