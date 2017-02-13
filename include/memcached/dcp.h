@@ -254,6 +254,17 @@ struct dcp_message_producers {
                                   uint16_t nkey,
                                   const void* value,
                                   uint32_t nvalue);
+
+    // comments please
+    ENGINE_ERROR_CODE (* system_event)(const void* cookie,
+                                       uint32_t opaque,
+                                       uint16_t vbucket,
+                                       uint64_t bySeqno,
+                                       uint32_t event,
+                                       const void *key,
+                                       uint16_t keyLen,
+                                       const void *extra,
+                                       uint32_t extraLen);
 };
 
 typedef ENGINE_ERROR_CODE (* dcp_add_failover_log)(vbucket_failover_t*,
