@@ -58,7 +58,11 @@ enum class DocumentState : uint8_t {
     Alive = 0xF0,
 };
 
-typedef struct {
+struct item_info {
+    item_info() : cas(0), vbucket_uuid(0), seqno(0), exptime(0), nbytes(0), flags(0), datatype(0), document_state(), nkey(0), key(nullptr), collectionLen(0) {
+        value[0] = {};
+    }
+
     uint64_t cas;
     uint64_t vbucket_uuid;
     uint64_t seqno;
@@ -80,7 +84,13 @@ typedef struct {
      * finally the actual document payload.
      */
     struct iovec value[1];
-} item_info;
+
+    /**
+     * How many bytes of nkey are the item's collection name, 0 is valid if
+     * the key is in the DefaultCollection
+     */
+    uint8_t collectionLen;
+};
 
 typedef struct {
     const char *username;
