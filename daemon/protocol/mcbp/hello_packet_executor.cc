@@ -43,6 +43,7 @@ void process_hello_packet_executor(McbpConnection* c, void* packet) {
     c->setSupportsMutationExtras(false);
     c->setXattrSupport(false);
     c->setXerrorSupport(false);
+    c->setCollectionsSupported(false);
 
     if (!key.empty()) {
         log_buffer.append("[");
@@ -95,6 +96,13 @@ void process_hello_packet_executor(McbpConnection* c, void* packet) {
         case mcbp::Feature::XERROR:
             if (!c->isXerrorSupport()) {
                 c->setXerrorSupport(true);
+                added = true;
+            }
+            break;
+
+        case mcbp::Feature::COLLECTIONS:
+            if (!c->isCollectionsSupported()) {
+                c->setCollectionsSupported(true);
                 added = true;
             }
             break;
