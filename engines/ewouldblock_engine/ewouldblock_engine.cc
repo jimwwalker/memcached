@@ -854,6 +854,9 @@ private:
                                               cb::const_byte_buffer key,
                                               cb::const_byte_buffer eventData);
 
+    static ENGINE_ERROR_CODE collections_set_manifest(ENGINE_HANDLE* handle,
+                                                      cb::const_char_buffer json);
+
     // Base class for all fault injection modes.
     struct FaultInjectMode {
         FaultInjectMode(ENGINE_ERROR_CODE injected_error_)
@@ -1193,6 +1196,10 @@ EWB_Engine::EWB_Engine(GET_SERVER_API gsa_)
     ENGINE_HANDLE_V1::dcp.noop = dcp_noop;
     ENGINE_HANDLE_V1::dcp.response_handler = dcp_response_handler;
     ENGINE_HANDLE_V1::dcp.system_event = dcp_system_event;
+
+    ENGINE_HANDLE_V1::collections = {};
+    ENGINE_HANDLE_V1::collections.set_manifest = collections_set_manifest;
+
 
     std::memset(&info, 0, sizeof(info.buffer));
     info.eng_info.description = "EWOULDBLOCK Engine";
@@ -1577,6 +1584,17 @@ ENGINE_ERROR_CODE EWB_Engine::dcp_system_event(ENGINE_HANDLE* handle,
                                                   bySeqno,
                                                   key,
                                                   eventData);
+    }
+}
+
+ENGINE_ERROR_CODE EWB_Engine::collections_set_manifest(ENGINE_HANDLE* handle,
+                                                       cb::const_char_buffer json) {
+    EWB_Engine* ewb = to_engine(handle);
+    if (ewb->real_engine->collections.set_manifest == nullptr) {
+        return ENGINE_ENOTSUP;
+    } else {
+        return ewb->real_engine->collections.set_manifest(ewb->real_handle,
+                                                          json);
     }
 }
 

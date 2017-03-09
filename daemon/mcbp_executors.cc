@@ -37,6 +37,7 @@
 #include "mcbp_privileges.h"
 #include "protocol/mcbp/appendprepend_context.h"
 #include "protocol/mcbp/arithmetic_context.h"
+#include "protocol/mcbp/collections_set_manifest.h"
 #include "protocol/mcbp/get_context.h"
 #include "protocol/mcbp/get_locked_context.h"
 #include "protocol/mcbp/dcp_deletion.h"
@@ -1789,7 +1790,7 @@ std::array<mcbp_package_execute, 0x100>& get_mcbp_executors(void) {
     executors[PROTOCOL_BINARY_CMD_UNLOCK_KEY] = unlock_executor;
 
     executors[PROTOCOL_BINARY_CMD_RBAC_REFRESH] = rbac_refresh_executor;
-
+    executors[PROTOCOL_BINARY_CMD_COLLECTIONS_SET_MANIFEST] = collections_set_manifest_executor;
 
     return executors;
 }

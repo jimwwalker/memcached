@@ -1119,6 +1119,18 @@ static protocol_binary_response_status unlock_validator(const Cookie& cookie)
     return PROTOCOL_BINARY_RESPONSE_SUCCESS;
 }
 
+static protocol_binary_response_status collections_set_manifest_validator(const Cookie& cookie) {
+    auto req = static_cast<protocol_binary_collections_set_manifest*>(McbpConnection::getPacket(cookie));
+    uint32_t extlen = req->message.header.request.extlen;
+    uint32_t klen = ntohs(req->message.header.request.keylen);
+
+    if (klen != 0 || extlen != 0) {
+        return PROTOCOL_BINARY_RESPONSE_EINVAL;
+    }
+
+    return PROTOCOL_BINARY_RESPONSE_SUCCESS;
+}
+
 void McbpValidatorChains::initializeMcbpValidatorChains(McbpValidatorChains& chains) {
     chains.push_unique(PROTOCOL_BINARY_CMD_DCP_OPEN, dcp_open_validator);
     chains.push_unique(PROTOCOL_BINARY_CMD_DCP_ADD_STREAM, dcp_add_stream_validator);
@@ -1222,4 +1234,5 @@ void McbpValidatorChains::initializeMcbpValidatorChains(McbpValidatorChains& cha
     chains.push_unique(PROTOCOL_BINARY_CMD_GET_LOCKED, get_locked_validator);
     chains.push_unique(PROTOCOL_BINARY_CMD_UNLOCK_KEY, unlock_validator);
     chains.push_unique(PROTOCOL_BINARY_CMD_RBAC_REFRESH, configuration_refresh_validator);
+    chains.push_unique(PROTOCOL_BINARY_CMD_COLLECTIONS_SET_MANIFEST, collections_set_manifest_validator);
 }

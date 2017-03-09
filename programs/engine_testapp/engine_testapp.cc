@@ -675,6 +675,13 @@ static ENGINE_ERROR_CODE mock_dcp_response_handler(ENGINE_HANDLE* handle,
                                                 cookie, response);
 }
 
+static ENGINE_ERROR_CODE mock_collections_set_manifest(ENGINE_HANDLE* handle,
+                                                       cb::const_char_buffer json) {
+    struct mock_engine *me = get_handle(handle);
+    return me->the_engine->collections.set_manifest((ENGINE_HANDLE*)me->the_engine,
+                                                     json);
+}
+
 EXTENSION_LOGGER_DESCRIPTOR *logger_descriptor = NULL;
 
 static void usage(void) {
@@ -845,6 +852,7 @@ static ENGINE_HANDLE_V1* create_bucket(bool initialize, const char* cfg) {
         mock_engine->me.dcp.buffer_acknowledgement = mock_dcp_buffer_acknowledgement;
         mock_engine->me.dcp.control = mock_dcp_control;
         mock_engine->me.dcp.response_handler = mock_dcp_response_handler;
+        mock_engine->me.collections.set_manifest = mock_collections_set_manifest;
 
         mock_engine->the_engine = (ENGINE_HANDLE_V1*)handle;
 
