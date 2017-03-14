@@ -259,6 +259,20 @@ public:
         McbpConnection::dcpXattrAware = dcpXattrAware;
     }
 
+    bool isDcpCollectionAware() const {
+        return dcpCollectionAware;
+    }
+
+    void setDcpCollectionAware(bool dcpCollectionAware) {
+        // @todo Keeping this as NOTICE until ns_server sets this via the dcp
+        // open command.
+        LOG_NOTICE(this, "%u: DCP connection is %s collection aware %s",
+                   getId(),
+                   dcpCollectionAware ? "" : "not ",
+                   getDescription().c_str());
+        McbpConnection::dcpCollectionAware = dcpCollectionAware;
+    }
+
     bool isDcpNoValue() const {
         return dcpNoValue;
     }
@@ -830,6 +844,9 @@ protected:
 
     /** Shuld values be stripped off? */
     bool dcpNoValue;
+
+    /** Is this DCP channel collection aware? */
+    bool dcpCollectionAware;
 
     int max_reqs_per_event; /** The maximum requests we can process in a worker
                                 thread timeslice */

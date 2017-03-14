@@ -1581,7 +1581,7 @@ using protocol_binary_hello_features_t = mcbp::Feature;
 
     typedef protocol_binary_response_no_extras protocol_binary_response_dcp_snapshot_marker;
 
-    typedef union {
+    union protocol_binary_request_dcp_mutation {
         struct {
             protocol_binary_request_header header;
             struct {
@@ -1592,22 +1592,38 @@ using protocol_binary_hello_features_t = mcbp::Feature;
                 uint32_t lock_time;
                 uint16_t nmeta;
                 uint8_t nru;
+                uint8_t collection_len;
             } body;
         } message;
-        uint8_t bytes[sizeof(protocol_binary_request_header) + 31];
-    } protocol_binary_request_dcp_mutation;
+        uint8_t bytes[sizeof(protocol_binary_request_header) + 32];
+        size_t getExtlen(bool collection_aware) const {
+            if (collection_aware) {
+                return (2*sizeof(uint64_t)) + (3*sizeof(uint32_t)) + sizeof(uint16_t) + (2*sizeof(uint8_t));
+            } else {
+                return (2*sizeof(uint64_t)) + (3*sizeof(uint32_t)) + sizeof(uint16_t) + sizeof(uint8_t);
+            }
+        }
+    };
 
-    typedef union {
+    union protocol_binary_request_dcp_deletion {
         struct {
             protocol_binary_request_header header;
             struct {
                 uint64_t by_seqno;
                 uint64_t rev_seqno;
                 uint16_t nmeta;
+                uint8_t collection_len;
             } body;
         } message;
-        uint8_t bytes[sizeof(protocol_binary_request_header) + 18];
-    } protocol_binary_request_dcp_deletion;
+        uint8_t bytes[sizeof(protocol_binary_request_header) + 19];
+        size_t getExtlen(bool collection_aware) const {
+            if (collection_aware) {
+                return (2*sizeof(uint64_t)) + sizeof(uint16_t) + (1*sizeof(uint8_t));
+            } else {
+                return (2*sizeof(uint64_t)) + sizeof(uint16_t);
+            }
+        }
+    };
 
     typedef protocol_binary_request_dcp_deletion protocol_binary_request_dcp_expiration;
     typedef protocol_binary_request_no_extras protocol_binary_request_dcp_flush;

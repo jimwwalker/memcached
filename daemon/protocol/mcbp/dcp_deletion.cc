@@ -27,9 +27,24 @@ void dcp_deletion_executor(McbpConnection* c, void* packet) {
     c->setEwouldblock(false);
 
     if (ret == ENGINE_SUCCESS) {
+
+        // Collection aware DCP will be sending the collection_len field
+        uint8_t body_offset = sizeof(req->bytes);
+        uint8_t collection_len = 0;
+        DocNamespace ns = DocNamespace::DefaultCollection;
+        if (!c->isDcpCollectionAware()) {
+            body_offset -= 1;
+        } else {
+            // Collection aware DCP, read collection_len and translate to the
+            // namespace to use.
+            collection_len = req->message.body.collection_len;
+            if (collection_len != 0) {
+                ns = DocNamespace::Collections;
+            }
+        }
+
         const uint16_t nkey = ntohs(req->message.header.request.keylen);
-        const DocKey key{req->bytes + sizeof(req->bytes), nkey,
-                   DocNamespace::DefaultCollection};
+        const DocKey key{req->bytes + body_offset, nkey, ns};
         const auto opaque = req->message.header.request.opaque;
         const auto datatype = req->message.header.request.datatype;
         const uint64_t cas = ntohll(req->message.header.request.cas);
@@ -40,8 +55,7 @@ void dcp_deletion_executor(McbpConnection* c, void* packet) {
         const uint32_t valuelen = ntohl(req->message.header.request.bodylen) -
                                   nkey - req->message.header.request.extlen -
                                   nmeta;
-        cb::const_byte_buffer value{req->bytes + sizeof(req->bytes) + nkey,
-                                    valuelen};
+        cb::const_byte_buffer value{req->bytes + body_offset + nkey, valuelen};
         cb::const_byte_buffer meta{value.buf + valuelen, nmeta};
         uint32_t priv_bytes = 0;
         if (mcbp::datatype::is_xattr(datatype)) {
@@ -102,13 +116,6 @@ ENGINE_ERROR_CODE dcp_message_deletion(const void* void_cookie,
         }
     }
 
-    protocol_binary_request_dcp_deletion packet;
-    // check if we've got enough space in our current buffer to fit
-    // this message.
-    if (c->write.bytes + sizeof(packet.bytes) + nmeta >= c->write.size) {
-        return ENGINE_E2BIG;
-    }
-
     if (!c->reserveItem(it)) {
         LOG_WARNING(c, "%u: dcp_message_deletion: Failed to grow item array",
                     c->getId());
@@ -119,25 +126,40 @@ ENGINE_ERROR_CODE dcp_message_deletion(const void* void_cookie,
     // the item.
     item.release();
 
-    memset(packet.bytes, 0, sizeof(packet.bytes));
+    protocol_binary_request_dcp_deletion packet{};
+    size_t packetlen = sizeof(protocol_binary_request_dcp_deletion().bytes);
+    size_t extlen = packet.getExtlen(c->isDcpCollectionAware());
+
+    if (!c->isDcpCollectionAware()) {
+        // Don't send the collection_len
+        packetlen = packetlen - 1;
+    }
+
     packet.message.header.request.magic = (uint8_t)PROTOCOL_BINARY_REQ;
     packet.message.header.request.opcode = (uint8_t)PROTOCOL_BINARY_CMD_DCP_DELETION;
     packet.message.header.request.opaque = opaque;
     packet.message.header.request.vbucket = htons(vbucket);
     packet.message.header.request.cas = htonll(info.cas);
     packet.message.header.request.keylen = htons(info.nkey);
-    packet.message.header.request.extlen = 18;
-    packet.message.header.request.bodylen = ntohl(18 + info.nkey + nmeta + payloadsize);
+    packet.message.header.request.extlen = extlen;
+    packet.message.header.request.bodylen = ntohl(extlen + info.nkey + nmeta + payloadsize);
     packet.message.header.request.datatype = datatype;
     packet.message.body.by_seqno = htonll(by_seqno);
     packet.message.body.rev_seqno = htonll(rev_seqno);
     packet.message.body.nmeta = htons(nmeta);
+    packet.message.body.collection_len = info.collectionLen;
+
+    // check if we've got enough space in our current buffer to fit
+    // this message.
+    if (c->write.bytes + packetlen + nmeta >= c->write.size) {
+        return ENGINE_E2BIG;
+    }
 
     // Add the header
-    c->addIov(c->write.curr, sizeof(packet.bytes));
-    memcpy(c->write.curr, packet.bytes, sizeof(packet.bytes));
-    c->write.curr += sizeof(packet.bytes);
-    c->write.bytes += sizeof(packet.bytes);
+    c->addIov(c->write.curr, packetlen);
+    memcpy(c->write.curr, packet.bytes, packetlen);
+    c->write.curr += packetlen;
+    c->write.bytes += packetlen;
 
     // Add the key
     c->addIov(info.key, info.nkey);
