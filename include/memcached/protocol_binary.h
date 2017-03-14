@@ -1646,7 +1646,7 @@ using protocol_binary_hello_features_t = mcbp::Feature;
     typedef protocol_binary_request_no_extras protocol_binary_request_dcp_control;
     typedef protocol_binary_response_no_extras protocol_binary_response_dcp_control;
 
-    typedef union {
+    union protocol_binary_request_dcp_system_event {
         struct {
             protocol_binary_request_header header;
             struct {
@@ -1655,7 +1655,10 @@ using protocol_binary_hello_features_t = mcbp::Feature;
             } body;
         } message;
         uint8_t bytes[sizeof(protocol_binary_request_header) + 12];
-    } protocol_binary_request_dcp_system_event;
+        inline size_t getExtlen() const {
+            return sizeof(uint64_t) + sizeof(uint32_t);
+        }
+    };
 
     /**
      * IOCTL_GET command message to get/set control parameters.
