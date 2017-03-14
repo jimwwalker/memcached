@@ -31,12 +31,22 @@ void dcp_control_executor(McbpConnection* c, void* packet) {
             auto* req = reinterpret_cast<protocol_binary_request_dcp_control*>(packet);
             const uint8_t* key = req->bytes + sizeof(req->bytes);
             uint16_t nkey = ntohs(req->message.header.request.keylen);
-            const uint8_t* value = key + nkey;
-            uint32_t nvalue = ntohl(req->message.header.request.bodylen) - nkey;
-            ret = c->getBucketEngine()->dcp.control(c->getBucketEngineAsV0(),
-                                                    c->getCookie(),
-                                                    c->binary_header.request.opaque,
-                                                    key, nkey, value, nvalue);
+            // Allow collections to be enabled on DCP via control. This will
+            // be replaced by an update to dcp_open (with the correct flags).
+            if (memcmp(key, "collections_prototype", nkey) == 0) {
+                c->setDcpCollectionAware(true);
+                // And done. Move to the next command.
+            } else {
+                auto* req = reinterpret_cast<protocol_binary_request_dcp_control*>(packet);
+                const uint8_t* key = req->bytes + sizeof(req->bytes);
+                uint16_t nkey = ntohs(req->message.header.request.keylen);
+                const uint8_t* value = key + nkey;
+                uint32_t nvalue = ntohl(req->message.header.request.bodylen) - nkey;
+                ret = c->getBucketEngine()->dcp.control(c->getBucketEngineAsV0(),
+                                                        c->getCookie(),
+                                                        c->binary_header.request.opaque,
+                                                        key, nkey, value, nvalue);
+            }
         }
     }
 
